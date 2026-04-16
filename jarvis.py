@@ -5,28 +5,30 @@ import datetime
 import os
 import pyautogui
 
-# --- Voice Setup ---
+# --- Voice Engine Setup ---
 engine = pyttsx3.init()
 voices = engine.getProperty('voices')
-# 0 male ke liye, 1 female ke liye (Aap change karke check kar sakte hain)
-engine.setProperty('voice', voices[0].id) 
-engine.setProperty('rate', 180) # Bolne ki speed
+
+# 1 aksar Female voice hola (Agar mard ke awaaz aaye ta 0 ya 2 try kar sakela)
+engine.setProperty('voice', voices[1].id) 
+engine.setProperty('rate', 150) # Thoda dheere bolai ta Bhojpuri me maza aayi
+engine.setProperty('volume', 1.0)
 
 def speak(text):
-    print(f"Jarvis: {text}")
+    print(f"Ganga: {text}")
     engine.say(text)
     engine.runAndWait()
 
 def take_command():
     listener = sr.Recognizer()
     with sr.Microphone() as source:
-        # Shor saaf karne ke liye
-        listener.adjust_for_ambient_noise(source, duration=0.5)
+        # Shor kam kare khatir
+        listener.adjust_for_ambient_noise(source, duration=0.8)
         print("\nSuni taani... Boliye... (Listening...)")
         voice = listener.listen(source)
 
     try:
-        # language='hi-IN' Bhojpuri aur Hindi dono ke liye best kaam karta hai
+        # Google Hindi (hi-IN) Bhojpuri badhiya se samjhela
         command = listener.recognize_google(voice, language='hi-IN')
         command = command.lower()
         print(f"Aapne kaha: {command}")
@@ -40,51 +42,53 @@ def run_assistant():
     if not command:
         return True
 
-    # --- Entertainment (Gaana) ---
+    # --- Gaana Bajaye khatir ---
     if 'बजाओ' in command or 'baja' in command or 'play' in command:
         song = command.replace('play', '').replace('baja', '').replace('बजाओ', '')
-        speak(f'Theek ba, YouTube par {song} bajawat tani.')
+        speak(f'Theek ba Diwakar ji, abhi YouTube par {song} bajawat tani, maza liji.')
         pywhatkit.playonyt(song)
 
-    # --- App Opening ---
+    # --- App Khole khatir ---
     elif 'खोल' in command or 'open' in command or 'kholo' in command:
         if 'notepad' in command:
-            speak('Notepad khul gail.')
+            speak('Theek ba, Notepad khul gail ba.')
             os.system('notepad')
-        elif 'calculator' in command:
-            speak('Calculator khol tani.')
+        elif 'calculator' in command or 'hisab' in command:
+            speak('Hisab-kitab khatir calculator khul gail.')
             os.system('calc')
-        elif 'chrome' in command:
-            speak('Chrome khul gail ba.')
+        elif 'chrome' in command or 'browser' in command:
+            speak('Internet wala browser khul gail ba.')
             os.system('start chrome')
 
-    # --- Window Controls (Minimize/Close) ---
-    elif 'छोटा' in command or 'minimize' in command or 'desktop' in command:
-        speak('Theek ba, sab minimize kar tani.')
-        pyautogui.hotkey('win', 'd') # Desktop show karega
+    # --- Window Controls ---
+    elif 'छोटा' in command or 'minimize' in command:
+        speak('Theek ba, sab window niche kar tani.')
+        pyautogui.hotkey('win', 'd')
 
     elif 'बंद' in command or 'close' in command:
-        speak('Window band kar tani.')
-        pyautogui.hotkey('alt', 'f4') # Current window close karega
+        speak('Theek ba, window band ho gail.')
+        pyautogui.hotkey('alt', 'f4')
 
-    # --- Time ---
-    elif 'समय' in command or 'time' in command:
+    # --- Time (Samay) ---
+    elif 'समय' in command or 'time' in command or 'ka baje' in command:
         time = datetime.datetime.now().strftime('%I:%M %p')
-        speak(f'Abhi ke time ho rahal ba {time}')
+        speak(f'Abhi ke samay ho rahal ba {time}')
 
     # --- Exit ---
-    elif 'बंद हो' in command or 'exit' in command or 'stop' in command:
-        speak('Pranam Diwakar, fir milab!')
+    elif 'बंद हो' in command or 'ruk jao' in command or 'exit' in command:
+        speak('Theek ba, ab hum jaat tani. Pranam Diwakar ji!')
         return False
     
     else:
-        speak('Humra samajh me nahi aayil, fir se boli.')
+        # Kuch na samajh me aila par
+        speak('Ka kahila? Humra samajh me nahi aayil, fir se boli na.')
     
     return True
 
-# --- Program Start ---
+# --- Main Start ---
 if __name__ == "__main__":
-    speak("Pranam Diwakar, batai ka sahayata kari?")
+    # Assistant ke desi swagat
+    speak("Pranam Diwakar ji! Hum Ganga bani, batai ka sahayata kari?")
     while True:
         if not run_assistant():
             break
