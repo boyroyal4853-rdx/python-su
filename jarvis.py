@@ -1,94 +1,174 @@
 import speech_recognition as sr
-import pyttsx3
-import pywhatkit
-import datetime
+from gtts import gTTS
+import pygame
+import time
 import os
-import pyautogui
 
-# --- Voice Engine Setup ---
-engine = pyttsx3.init()
-voices = engine.getProperty('voices')
-
-# 1 aksar Female voice hola (Agar mard ke awaaz aaye ta 0 ya 2 try kar sakela)
-engine.setProperty('voice', voices[1].id) 
-engine.setProperty('rate', 150) # Thoda dheere bolai ta Bhojpuri me maza aayi
-engine.setProperty('volume', 1.0)
+pygame.mixer.init()
 
 def speak(text):
     print(f"Ganga: {text}")
-    engine.say(text)
-    engine.runAndWait()
+    
+    # 👉 Text ko clean Hindi me convert karo
+    clean_text = text.replace("ba", "है").replace("ka", "क्या")
 
+    tts = gTTS(text=clean_text, lang='hi', tld='co.in')
+    filename = "voice.mp3"
+    
+    tts.save(filename)
+
+    pygame.mixer.init()
+    pygame.mixer.music.load(filename)
+    pygame.mixer.music.play()
+
+    while pygame.mixer.music.get_busy():
+        time.sleep(0.5)
+
+    pygame.mixer.music.unload()
+    pygame.mixer.quit()
+
+    time.sleep(0.5)
+    os.remove(filename)
+
+# --- Voice Input ---
 def take_command():
     listener = sr.Recognizer()
     with sr.Microphone() as source:
-        # Shor kam kare khatir
         listener.adjust_for_ambient_noise(source, duration=0.8)
-        print("\nSuni taani... Boliye... (Listening...)")
+        print("\nListening...")
         voice = listener.listen(source)
 
     try:
-        # Google Hindi (hi-IN) Bhojpuri badhiya se samjhela
         command = listener.recognize_google(voice, language='hi-IN')
         command = command.lower()
-        print(f"Aapne kaha: {command}")
+        print(f"You said: {command}")
         return command
     except:
         return ""
 
+# --- Weather ---
+def get_weather(city="Varanasi"):
+    try:
+        api_key = "YOUR_API_KEY"   # 👉 apna API key daalo
+        url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric"
+        data = requests.get(url).json()
+
+        temp = data['main']['temp']
+        desc = data['weather'][0]['description']
+
+        return f"{city} me abhi temperature {temp} degree hai aur mausam {desc} hai."
+    except:
+        return "Weather check nahi ho paaya."
+
+# --- Indian Assistant ---
+def indian_assistant(command):
+
+    if "namaste" in command or "hello" in command:
+        return "Namaste! Ka haal ba?"
+
+    elif "time" in command or "samay" in command:
+        time = datetime.datetime.now().strftime('%I:%M %p')
+        return f"Abhi ka samay hai {time}"
+
+    elif "date" in command:
+        date = datetime.datetime.now().strftime('%d %B %Y')
+        return f"Aaj ki tareekh hai {date}"
+
+    elif "weather" in command or "mausam" in command:
+        return get_weather()
+
+    elif "kaun hai" in command or "who is" in command:
+        try:
+            person = command.replace("kaun hai", "").replace("who is", "")
+            info = wikipedia.summary(person, sentences=2)
+            return info
+        except:
+            return "Iske baare me jankari nahi mili."
+
+    elif "news" in command:
+        return "Aaj ke news ke liye Google News check kariye."
+
+    elif "thank you" in command:
+        return "Aapka swagat hai!"
+
+    return None
+
+# --- Confirmation System ---
+def ask_continue():
+    speak("Kya aap aur koi kaam karwana chahte hain? Yes ya No boliye.")
+    
+    answer = take_command()
+
+    if answer == "":
+        speak("Samajh nahi aaya, main band ho raha hoon.")
+        return False
+
+    if 'yes' in answer or 'haan' in answer:
+        return True
+    else:
+        speak("Theek hai, phir milte hain. Namaste!")
+        return False
+
+# --- Main Logic ---
 def run_assistant():
     command = take_command()
-    
+
     if not command:
+        speak("Kuch suna nahi, dobara boliye.")
         return True
 
-    # --- Gaana Bajaye khatir ---
-    if 'बजाओ' in command or 'baja' in command or 'play' in command:
-        song = command.replace('play', '').replace('baja', '').replace('बजाओ', '')
-        speak(f'Theek ba Diwakar ji, abhi YouTube par {song} bajawat tani, maza liji.')
+    # --- Song ---
+    if 'play' in command or 'baja' in command:
+        song = command.replace('play', '').replace('baja', '')
+        speak(f"{song} bajaya ja raha hai")
         pywhatkit.playonyt(song)
 
-    # --- App Khole khatir ---
-    elif 'खोल' in command or 'open' in command or 'kholo' in command:
+    # --- Open Apps ---
+    elif 'open' in command or 'kholo' in command:
         if 'notepad' in command:
-            speak('Theek ba, Notepad khul gail ba.')
             os.system('notepad')
-        elif 'calculator' in command or 'hisab' in command:
-            speak('Hisab-kitab khatir calculator khul gail.')
+            speak("Notepad khul gaya")
+
+        elif 'calculator' in command:
             os.system('calc')
-        elif 'chrome' in command or 'browser' in command:
-            speak('Internet wala browser khul gail ba.')
+            speak("Calculator khul gaya")
+
+        elif 'chrome' in command:
             os.system('start chrome')
+            speak("Chrome khul gaya")
 
-    # --- Window Controls ---
-    elif 'छोटा' in command or 'minimize' in command:
-        speak('Theek ba, sab window niche kar tani.')
-        pyautogui.hotkey('win', 'd')
-
-    elif 'बंद' in command or 'close' in command:
-        speak('Theek ba, window band ho gail.')
+    # --- Window Control ---
+    elif 'close' in command:
         pyautogui.hotkey('alt', 'f4')
+        speak("Window band kar diya")
 
-    # --- Time (Samay) ---
-    elif 'समय' in command or 'time' in command or 'ka baje' in command:
-        time = datetime.datetime.now().strftime('%I:%M %p')
-        speak(f'Abhi ke samay ho rahal ba {time}')
+    elif 'minimize' in command:
+        pyautogui.hotkey('win', 'd')
+        speak("Sab minimize kar diya")
 
-    # --- Exit ---
-    elif 'बंद हो' in command or 'ruk jao' in command or 'exit' in command:
-        speak('Theek ba, ab hum jaat tani. Pranam Diwakar ji!')
-        return False
-    
+    # --- Search ---
+    elif 'search' in command:
+        query = command.replace('search', '')
+        pywhatkit.search(query)
+        speak(f"{query} search kar rahe hain")
+
+    # --- Indian Assistant ---
     else:
-        # Kuch na samajh me aila par
-        speak('Ka kahila? Humra samajh me nahi aayil, fir se boli na.')
-    
+        response = indian_assistant(command)
+        if response:
+            speak(response)
+        else:
+            speak("Thoda aur clearly boliye, samajh nahi aaya.")
+
     return True
 
-# --- Main Start ---
+# --- Main ---
 if __name__ == "__main__":
-    # Assistant ke desi swagat
-    speak("Pranam Diwakar ji! Hum Ganga bani, batai ka sahayata kari?")
+    speak("radhe- radhe , boli   ham   kya sewa  kree")
+    
     while True:
         if not run_assistant():
+            break
+
+        if not ask_continue():
             break
